@@ -1,9 +1,9 @@
 const CACHE_NAME = "badgelife-cache-v1";
 const ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
-  "/icons/badgelife-logo.svg"
+  "./",
+  "./index.html",
+  "./manifest.webmanifest",
+  "./icons/badgelife-logo.svg"
 ];
 
 self.addEventListener("install", (event) => {

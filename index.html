@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BadgeLife</title>
   <meta name="theme-color" content="#0b1220">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/badgelife-logo.svg">
-  <link rel="icon" href="/icons/badgelife-logo.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/badgelife-logo.svg">
+  <link rel="icon" href="icons/badgelife-logo.svg" type="image/svg+xml">
   <style>
     :root {
       --bg: #0f172a;
@@ -2012,7 +2012,7 @@
 
     // Service worker registration
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   </script>
 </body>
