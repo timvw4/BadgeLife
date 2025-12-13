@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://zivhvacygphmdhbsjonr.supabase.co";       // colle ton URL
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inppdmh2YWN5Z3BobWRoYnNqb25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1OTY0ODYsImV4cCI6MjA4MTE3MjQ4Nn0.9g17ZI3D5x4onq7ud6zgosDucyrrzQDHNwYrsiSaWqA";       // colle ton anon key
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BadgeLife</title>
@@ -456,6 +462,7 @@
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
 
+
     function saveProfiles() {
       localStorage.setItem('badgeProfiles', JSON.stringify(state.profiles));
       localStorage.setItem('badgeCurrentUser', state.currentUser);
@@ -464,17 +471,6 @@
     function loadProfiles() {
       state.profiles = JSON.parse(localStorage.getItem('badgeProfiles') || '[]');
       state.currentUser = localStorage.getItem('badgeCurrentUser') || '';
-      if (state.currentUser) {
-        const p = state.profiles.find(u => u.user === state.currentUser);
-        if (p) {
-          applyProfile(p);
-          state.started = true;
-        }
-      }
-      updateVisibility();
-      refreshHello();
-      renderOwned();
-      renderAll();
     }
 
     function applyProfile(p) {
@@ -504,6 +500,15 @@
             owned: state.owned,
             answers: state.answers
           };
+        } else {
+          state.profiles.push({
+            user: state.currentUser,
+            name: state.name,
+            firstName: state.firstName,
+            lastName: state.lastName,
+            owned: state.owned,
+            answers: state.answers
+          });
         }
       }
       saveProfiles();
@@ -2017,7 +2022,8 @@
       loginForm.classList.add('hidden');
     };
 
-    logoutBtn.onclick = () => {
+    logoutBtn.onclick = async () => {
+      await supabaseClient.auth.signOut();
       state.started = false;
       state.currentUser = '';
       saveProfiles();
@@ -2028,13 +2034,19 @@
       const u = loginUser.value.trim();
       const p = loginPass.value.trim();
       if (!u || !p) { alert('Renseigne utilisateur et mot de passe'); return; }
-      const pwd = await hashText(p);
-      const found = state.profiles.find(x => x.user === u && x.pass === pwd);
-      if (!found) { alert('Identifiants incorrects'); return; }
-      state.currentUser = u;
-      applyProfile(found);
+      const email = `${u}@badgelife.local`;
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: p });
+      if (error || !data.session) { alert('Identifiants incorrects'); return; }
+      const uid = data.session.user.id;
+      state.currentUser = uid;
+      const local = state.profiles.find(x => x.user === uid);
+      if (local) {
+        applyProfile(local);
+      } else {
+        applyProfile({ user: uid, name: data.session.user.user_metadata?.name || u, firstName: u, lastName: '' , owned:{}, answers:{} });
+      }
       state.started = true;
-      saveProfiles();
+      persist();
       refreshHello();
       renderOwned();
       renderAll();
@@ -2051,14 +2063,19 @@
         alert('Renseigne utilisateur, prénom, nom et mot de passe.');
         return;
       }
-      if (state.profiles.find(x => x.user === u)) {
-        alert('Ce nom d’utilisateur existe déjà.');
+      const email = `${u}@badgelife.local`;
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password: p,
+        options: { data: { username: u, first_name: f, last_name: l, name: `${f} ${l}` } }
+      });
+      if (error || !data.session) {
+        alert(error?.message || 'Erreur à l’inscription');
         return;
       }
-      const pwd = await hashText(p);
+      const uid = data.session.user.id;
       const profile = {
-        user: u,
-        pass: pwd,
+        user: uid,
         name: `${f} ${l}`,
         firstName: f,
         lastName: l,
@@ -2066,10 +2083,10 @@
         answers: {}
       };
       state.profiles.push(profile);
-      state.currentUser = u;
+      state.currentUser = uid;
       applyProfile(profile);
       state.started = true;
-      saveProfiles();
+      persist();
       refreshHello();
       renderOwned();
       renderAll();
@@ -2090,6 +2107,33 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
+
+    // Récupération session Supabase au chargement
+    (async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      loadProfiles();
+      if (session?.user?.id) {
+        state.currentUser = session.user.id;
+        const local = state.profiles.find(x => x.user === state.currentUser);
+        if (local) {
+          applyProfile(local);
+        } else {
+          applyProfile({
+            user: state.currentUser,
+            name: session.user.user_metadata?.name || 'Profil',
+            firstName: session.user.user_metadata?.first_name || '',
+            lastName: session.user.user_metadata?.last_name || '',
+            owned: {},
+            answers: {}
+          });
+        }
+        state.started = true;
+      }
+      refreshHello();
+      renderOwned();
+      renderAll();
+      updateVisibility();
+    })();
   </script>
 </body>
 </html>
