@@ -513,6 +513,7 @@
       }
       saveProfiles();
       updateVisibility();
+      syncRemoteProgress();
     }
 
     function refreshHello() {
@@ -571,6 +572,37 @@
         landing.classList.remove('hidden');
         appShell.classList.add('hidden');
       }
+    }
+
+    async function loadRemoteProgress(userId) {
+      if (!userId) return;
+      const { data, error } = await supabaseClient
+        .from('progress')
+        .select('owned, answers')
+        .eq('user_id', userId)
+        .single();
+      if (!error && data) {
+        state.owned = data.owned || {};
+        state.answers = data.answers || {};
+      } else if (error && error.code === 'PGRST116') {
+        // pas d'entrée, on en créera une au prochain sync
+      } else if (error) {
+        console.warn('Erreur load remote progress', error.message);
+      }
+    }
+
+    async function syncRemoteProgress() {
+      if (!state.started || !state.currentUser) return;
+      await supabaseClient
+        .from('progress')
+        .upsert({
+          user_id: state.currentUser,
+          owned: state.owned || {},
+          answers: state.answers || {}
+        })
+        .select()
+        .single()
+        .catch(() => {});
     }
 
     function renderOwned() {
@@ -2045,6 +2077,7 @@
       } else {
         applyProfile({ user: uid, name: data.session.user.user_metadata?.name || u, firstName: u, lastName: '' , owned:{}, answers:{} });
       }
+      await loadRemoteProgress(uid);
       state.started = true;
       persist();
       refreshHello();
@@ -2085,6 +2118,7 @@
       state.profiles.push(profile);
       state.currentUser = uid;
       applyProfile(profile);
+      await loadRemoteProgress(uid);
       state.started = true;
       persist();
       refreshHello();
