@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="80" fill="#e5e7eb"/>
-  <rect x="60" y="120" width="392" height="272" rx="40" fill="#cbd5e1"/>
-  <rect x="90" y="150" width="332" height="212" rx="28" fill="#f8fafc"/>
-  <text x="50%" y="50%" fill="#1d4ed8" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="82" font-weight="800" text-anchor="middle" dominant-baseline="middle">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="64" fill="url(#bg)"/>
+  <text x="50%" y="50%" fill="#0b1220" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="72" font-weight="800" text-anchor="middle" dominant-baseline="middle" letter-spacing="0.5px">
     BadgeLife
   </text>
-  <circle cx="110" cy="402" r="14" fill="#1d4ed8"/>
-  <circle cx="402" cy="110" r="12" fill="#22d3ee"/>
-  <circle cx="420" cy="392" r="10" fill="#a78bfa"/>
 </svg>
 
