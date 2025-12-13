@@ -2037,6 +2037,8 @@
       state.lastName = '';
       state.owned = {};
       state.answers = {};
+      state.currentUser = '';
+      state.started = false;
       nameDisplay.textContent = 'Profil non défini';
       refreshHello();
       renderOwned();
@@ -2058,6 +2060,15 @@
       await supabaseClient.auth.signOut();
       state.started = false;
       state.currentUser = '';
+      state.name = '';
+      state.firstName = '';
+      state.lastName = '';
+      state.owned = {};
+      state.answers = {};
+      nameDisplay.textContent = 'Profil non défini';
+      refreshHello();
+      renderOwned();
+      renderAll();
       saveProfiles();
       updateVisibility();
     };
@@ -2144,25 +2155,11 @@
 
     // Récupération session Supabase au chargement
     (async () => {
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      // On repart toujours sur l'écran d'accueil (pas de connexion auto)
+      await supabaseClient.auth.signOut().catch(() => {});
+      state.started = false;
+      state.currentUser = '';
       loadProfiles();
-      if (session?.user?.id) {
-        state.currentUser = session.user.id;
-        const local = state.profiles.find(x => x.user === state.currentUser);
-        if (local) {
-          applyProfile(local);
-        } else {
-          applyProfile({
-            user: state.currentUser,
-            name: session.user.user_metadata?.name || 'Profil',
-            firstName: session.user.user_metadata?.first_name || '',
-            lastName: session.user.user_metadata?.last_name || '',
-            owned: {},
-            answers: {}
-          });
-        }
-        state.started = true;
-      }
       refreshHello();
       renderOwned();
       renderAll();
