@@ -290,19 +290,27 @@
   <main id="app-container">
     <section class="hero" id="landing">
       <h2>BadgeLife</h2>
-      <p>Crée ton profil ou choisis un profil existant, puis collectionne des badges en répondant aux questions.</p>
+      <p>Crée un compte, connecte-toi et collectionne des badges. Tes données restent sur cet appareil.</p>
       <div class="row">
         <button id="btn-login">Connexion</button>
         <button id="btn-register" class="ghost">S'inscrire</button>
       </div>
+      <div id="login-form" class="hidden" style="margin-top:12px;">
+        <div class="row">
+          <input id="login-user" placeholder="Nom d'utilisateur" />
+          <input id="login-pass" type="password" placeholder="Mot de passe" />
+          <button id="login-submit">Se connecter</button>
+        </div>
+      </div>
       <div id="register-form" class="hidden" style="margin-top:12px;">
         <div class="row">
+          <input id="reg-user" placeholder="Nom d'utilisateur" />
           <input id="reg-first" placeholder="Prénom" />
           <input id="reg-last" placeholder="Nom" />
           <input id="reg-pass" type="password" placeholder="Mot de passe" />
           <button id="reg-submit">Valider l'inscription</button>
         </div>
-        <p class="mini-note">Ces infos restent stockées en local sur cet appareil.</p>
+        <p class="mini-note">Les comptes sont stockés en local sur cet appareil.</p>
       </div>
     </section>
 
@@ -364,10 +372,11 @@
   <script>
     // Stockage local pour retenir le profil et les badges
     const state = {
+      profiles: [],
+      currentUser: '',
       name: '',
       firstName: '',
       lastName: '',
-      password: '',
       owned: {},
       answers: {},
       started: false
@@ -433,38 +442,71 @@
     const appShell = document.getElementById('app-shell');
     const loginBtn = document.getElementById('btn-login');
     const registerBtn = document.getElementById('btn-register');
+    const loginForm = document.getElementById('login-form');
     const regForm = document.getElementById('register-form');
+    const regUser = document.getElementById('reg-user');
     const regFirst = document.getElementById('reg-first');
     const regLast = document.getElementById('reg-last');
     const regPass = document.getElementById('reg-pass');
     const regSubmit = document.getElementById('reg-submit');
+    const loginUser = document.getElementById('login-user');
+    const loginPass = document.getElementById('login-pass');
+    const loginSubmit = document.getElementById('login-submit');
     const logoutBtn = document.getElementById('logout');
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
 
-    function loadProfileSingle() {
-      state.name = localStorage.getItem('badgeName') || '';
-      state.firstName = localStorage.getItem('badgeFirst') || '';
-      state.lastName = localStorage.getItem('badgeLast') || '';
-      state.password = localStorage.getItem('badgePass') || '';
-      state.owned = JSON.parse(localStorage.getItem('badgeOwned') || '{}');
-      state.answers = JSON.parse(localStorage.getItem('badgeAnswers') || '{}');
-      state.started = localStorage.getItem('badgeStarted') === '1';
-      nameDisplay.textContent = state.name || 'Profil non défini';
+    function saveProfiles() {
+      localStorage.setItem('badgeProfiles', JSON.stringify(state.profiles));
+      localStorage.setItem('badgeCurrentUser', state.currentUser);
+    }
+
+    function loadProfiles() {
+      state.profiles = JSON.parse(localStorage.getItem('badgeProfiles') || '[]');
+      state.currentUser = localStorage.getItem('badgeCurrentUser') || '';
+      if (state.currentUser) {
+        const p = state.profiles.find(u => u.user === state.currentUser);
+        if (p) {
+          applyProfile(p);
+          state.started = true;
+        }
+      }
+      updateVisibility();
       refreshHello();
       renderOwned();
       renderAll();
-      updateVisibility();
+    }
+
+    function applyProfile(p) {
+      state.name = p.name || '';
+      state.firstName = p.firstName || '';
+      state.lastName = p.lastName || '';
+      state.owned = p.owned || {};
+      state.answers = p.answers || {};
+      nameDisplay.textContent = state.name || 'Profil non défini';
+    }
+
+    async function hashText(t) {
+      const enc = new TextEncoder().encode(t);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
     }
 
     function persist() {
-      localStorage.setItem('badgeName', state.name);
-      localStorage.setItem('badgeFirst', state.firstName);
-      localStorage.setItem('badgeLast', state.lastName);
-      localStorage.setItem('badgePass', state.password);
-      localStorage.setItem('badgeOwned', JSON.stringify(state.owned));
-      localStorage.setItem('badgeAnswers', JSON.stringify(state.answers));
-      localStorage.setItem('badgeStarted', state.started ? '1' : '0');
+      if (state.currentUser) {
+        const idx = state.profiles.findIndex(u => u.user === state.currentUser);
+        if (idx >= 0) {
+          state.profiles[idx] = {
+            ...state.profiles[idx],
+            name: state.name,
+            firstName: state.firstName,
+            lastName: state.lastName,
+            owned: state.owned,
+            answers: state.answers
+          };
+        }
+      }
+      saveProfiles();
       updateVisibility();
     }
 
@@ -1956,7 +1998,6 @@
       state.name = '';
       state.firstName = '';
       state.lastName = '';
-      state.password = '';
       state.owned = {};
       state.answers = {};
       nameDisplay.textContent = 'Profil non défini';
@@ -1967,38 +2008,73 @@
     };
 
     loginBtn.onclick = () => {
-      state.started = true;
-      persist();
+      loginForm.classList.remove('hidden');
+      regForm.classList.add('hidden');
     };
 
     registerBtn.onclick = () => {
       regForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
     };
 
     logoutBtn.onclick = () => {
       state.started = false;
-      persist();
+      state.currentUser = '';
+      saveProfiles();
+      updateVisibility();
     };
 
-    regSubmit.onclick = () => {
-      const f = regFirst.value.trim();
-      const l = regLast.value.trim();
-      const p = regPass.value.trim();
-      if (!f || !l || !p) {
-        alert('Renseigne prénom, nom et mot de passe.');
-        return;
-      }
-      state.firstName = f;
-      state.lastName = l;
-      state.password = p;
-      state.name = `${f} ${l}`;
-      nameDisplay.textContent = state.name;
+    loginSubmit.onclick = async () => {
+      const u = loginUser.value.trim();
+      const p = loginPass.value.trim();
+      if (!u || !p) { alert('Renseigne utilisateur et mot de passe'); return; }
+      const pwd = await hashText(p);
+      const found = state.profiles.find(x => x.user === u && x.pass === pwd);
+      if (!found) { alert('Identifiants incorrects'); return; }
+      state.currentUser = u;
+      applyProfile(found);
       state.started = true;
-      persist();
+      saveProfiles();
       refreshHello();
       renderOwned();
       renderAll();
       updateVisibility();
+      loginForm.classList.add('hidden');
+    };
+
+    regSubmit.onclick = async () => {
+      const u = regUser.value.trim();
+      const f = regFirst.value.trim();
+      const l = regLast.value.trim();
+      const p = regPass.value.trim();
+      if (!u || !f || !l || !p) {
+        alert('Renseigne utilisateur, prénom, nom et mot de passe.');
+        return;
+      }
+      if (state.profiles.find(x => x.user === u)) {
+        alert('Ce nom d’utilisateur existe déjà.');
+        return;
+      }
+      const pwd = await hashText(p);
+      const profile = {
+        user: u,
+        pass: pwd,
+        name: `${f} ${l}`,
+        firstName: f,
+        lastName: l,
+        owned: {},
+        answers: {}
+      };
+      state.profiles.push(profile);
+      state.currentUser = u;
+      applyProfile(profile);
+      state.started = true;
+      saveProfiles();
+      refreshHello();
+      renderOwned();
+      renderAll();
+      updateVisibility();
+      regForm.classList.add('hidden');
     };
 
     // Tabs navigation
