@@ -2080,15 +2080,34 @@
       const email = `${u}@badgelife.local`;
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: p });
       if (error || !data.session) { alert('Identifiants incorrects'); return; }
+      // Réinitialise avant de charger les données du compte
+      state.name = '';
+      state.firstName = '';
+      state.lastName = '';
+      state.owned = {};
+      state.answers = {};
       const uid = data.session.user.id;
       state.currentUser = uid;
-      const local = state.profiles.find(x => x.user === uid);
-      if (local) {
-        applyProfile(local);
-      } else {
-        applyProfile({ user: uid, name: data.session.user.user_metadata?.name || u, firstName: u, lastName: '' , owned:{}, answers:{} });
-      }
+      // Charge la progression distante en priorité
       await loadRemoteProgress(uid);
+      // Si rien en distant, tente le local, sinon profil vierge
+      if (!state.owned || Object.keys(state.owned).length === 0) {
+        const local = state.profiles.find(x => x.user === uid);
+        if (local) {
+          applyProfile(local);
+        } else {
+          applyProfile({ user: uid, name: data.session.user.user_metadata?.name || u, firstName: u, lastName: '' , owned:{}, answers:{} });
+        }
+      } else {
+        applyProfile({
+          user: uid,
+          name: data.session.user.user_metadata?.name || u,
+          firstName: data.session.user.user_metadata?.first_name || '',
+          lastName: data.session.user.user_metadata?.last_name || '',
+          owned: state.owned,
+          answers: state.answers
+        });
+      }
       state.started = true;
       persist();
       refreshHello();
