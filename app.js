@@ -239,14 +239,7 @@ async function fetchUserBadges() {
   state.userBadges = new Set(rows.filter(r => r.success !== false).map(row => row.badge_id));
   state.userBadgeLevels = new Map(rows.filter(r => r.success !== false && r.level !== null).map(r => [r.badge_id, r.level]));
   state.userBadgeAnswers = new Map(rows.filter(r => r.success !== false && r.user_answer).map(r => [r.badge_id, r.user_answer]));
-  state.mysteryCount = Array.from(state.userBadgeLevels.values()).filter(isMysteryLevel).length;
-  const badgeCount = state.userBadges.size;
-  els.badgeCount.textContent = badgeCount;
-  els.mysteryCount.textContent = state.mysteryCount;
-  if (state.profile) {
-    await supabase.from('profiles').update({ badge_count: badgeCount }).eq('id', state.user.id);
-    state.profile.badge_count = badgeCount;
-  }
+  await updateCounters(true);
 }
 
 async function fetchCommunity() {
@@ -263,8 +256,7 @@ function render() {
     els.profileUsername.textContent = state.profile.username;
     if (els.profileName) els.profileName.value = state.profile.username;
     updateAvatar(state.profile.avatar_url);
-    els.badgeCount.textContent = state.profile.badge_count ?? 0;
-    els.mysteryCount.textContent = state.mysteryCount ?? 0;
+    updateCounters(false);
   }
   renderAllBadges();
   renderMyBadges();
@@ -278,10 +270,11 @@ function renderAllBadges() {
   els.allBadgesList.innerHTML = '';
   state.badges.forEach(badge => {
     const unlocked = state.userBadges.has(badge.id);
-    const levelLabel = state.userBadgeLevels.get(badge.id);
+    const levelLabelRaw = state.userBadgeLevels.get(badge.id);
+    const levelLabel = normalizeLevelLabel(levelLabelRaw);
     const config = parseConfig(badge.answer);
     const card = document.createElement('article');
-    card.className = 'card-badge clickable';
+    card.className = 'card-badge clickable compact';
     const statusLabel = unlocked
       ? `Débloqué${levelLabel ? ' · ' + levelLabel : ''}`
       : 'À débloquer';
@@ -344,8 +337,9 @@ function renderMyBadges() {
   els.myBadgesList.innerHTML = '';
   unlockedBadges.forEach(badge => {
     const levelLabel = state.userBadgeLevels.get(badge.id);
+    const normLevel = normalizeLevelLabel(levelLabel);
     const card = document.createElement('article');
-    card.className = 'card-badge clickable';
+    card.className = 'card-badge clickable compact';
     const userAnswer = state.userBadgeAnswers.get(badge.id);
     const formattedAnswer = userAnswer ? formatUserAnswer(badge, userAnswer) : null;
     const cleanName = stripEmojis(badge.name || '');
@@ -353,7 +347,7 @@ function renderMyBadges() {
     const levelClass = isMysteryLevel(levelLabel)
       ? 'tag mystery'
       : (hasLevel ? 'tag success' : 'tag success');
-    const levelText = hasLevel ? levelLabel : 'Débloqué';
+    const levelText = hasLevel ? normLevel : 'Débloqué';
     card.innerHTML = `
       <div class="row">
         <span class="${levelClass}">${levelText}</span>
@@ -454,9 +448,7 @@ async function handleBadgeAnswer(event, badge) {
     state.attemptedBadges.add(badge.id);
     feedback.textContent = result.message || 'Badge non débloqué.';
     feedback.classList.add('error');
-    els.badgeCount.textContent = state.userBadges.size;
-    state.mysteryCount = Array.from(state.userBadgeLevels.values()).filter(isMysteryLevel).length;
-    els.mysteryCount.textContent = state.mysteryCount;
+    updateCounters(false);
     render();
     return;
   }
@@ -477,16 +469,21 @@ async function handleBadgeAnswer(event, badge) {
   if (result.level) state.userBadgeLevels.set(badge.id, result.level);
   state.userBadgeAnswers.set(badge.id, rawAnswer);
   state.attemptedBadges.add(badge.id);
-  state.mysteryCount = Array.from(state.userBadgeLevels.values()).filter(isMysteryLevel).length;
-  els.badgeCount.textContent = state.userBadges.size;
-  els.mysteryCount.textContent = state.mysteryCount;
+  updateCounters(false);
   feedback.textContent = result.message || 'Bravo, badge gagné !';
   feedback.classList.remove('error');
   render();
 }
 
 function isMysteryLevel(label) {
-  return typeof label === 'string' && label.toLowerCase().includes('mystère');
+  if (typeof label !== 'string') return false;
+  const lower = label.toLowerCase();
+  return lower.includes('mystère') || lower.includes('mystere') || lower.includes('secret');
+}
+
+function normalizeLevelLabel(label) {
+  if (isMysteryLevel(label)) return 'Niv mystère';
+  return label;
 }
 
 function parseConfig(answer) {
@@ -835,5 +832,18 @@ function toggleViews(authenticated) {
 function setMessage(text, isError = false) {
   els.authMessage.textContent = text;
   els.authMessage.classList.toggle('error', isError);
+}
+
+async function updateCounters(syncProfile = false) {
+  const badgeCount = state.userBadges.size;
+  state.mysteryCount = Array.from(state.userBadgeLevels.values()).filter(isMysteryLevel).length;
+  if (els.badgeCount) els.badgeCount.textContent = badgeCount;
+  if (els.mysteryCount) els.mysteryCount.textContent = state.mysteryCount;
+  if (state.profile) {
+    state.profile.badge_count = badgeCount;
+    if (syncProfile) {
+      await supabase.from('profiles').update({ badge_count: badgeCount }).eq('id', state.user.id);
+    }
+  }
 }
 

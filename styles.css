@@ -258,6 +258,40 @@ button {
   overflow: hidden;
 }
 
+.card-badge.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  min-height: 120px;
+}
+
+.card-badge.compact .badge-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.card-badge.compact .badge-emoji {
+  font-size: 26px;
+}
+
+.card-badge.compact .badge-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.card-badge.compact .row {
+  width: 100%;
+}
+
+.card-badge.compact .all-badge-details,
+.card-badge.compact .badge-details {
+  width: 100%;
+}
+
 .card-badge.expanded {
   border-color: var(--accent);
 }
@@ -379,9 +413,11 @@ button {
   border-radius: 14px;
   padding: 16px;
   min-width: 240px;
-  max-width: 320px;
+  max-width: 90vw;
   text-align: center;
   box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-card .close-btn {
@@ -453,9 +489,9 @@ button {
 }
 
 .tag.mystery {
-  background: rgba(139,92,246,0.2);
-  color: #ddd6fe;
-  border-color: rgba(139,92,246,0.6);
+  background: rgba(139,92,246,0.25);
+  color: #c084fc;
+  border-color: rgba(139,92,246,0.75);
 }
 
 .tag.locked {
@@ -522,5 +558,27 @@ button {
   }
   .tabs { flex-wrap: wrap; }
   .tab-button { flex: 1 1 120px; }
+
+  .grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .badges-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .card-badge.compact {
+    min-height: 100px;
+  }
+
+  .modal-card {
+    max-width: 90vw;
+    max-height: 90vh;
+    padding: 14px;
+  }
+
+  .profile-modal-content {
+    gap: 6px;
+  }
 }
 
