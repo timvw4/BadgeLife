@@ -247,6 +247,36 @@ button {
   min-height: 160px;
 }
 
+#my-badges-list.list-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#my-badges-list.list-mode .card-badge.compact {
+  width: 100%;
+  min-height: 90px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+#my-badges-list.list-mode .row {
+  width: auto;
+}
+
+#my-badges-list.list-mode .badge-compact {
+  flex: 1;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+#my-badges-list.list-mode .badge-details {
+  border-top: none;
+  padding-top: 0;
+}
+
 .card-badge {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
@@ -413,7 +443,8 @@ button {
   border-radius: 14px;
   padding: 16px;
   min-width: 240px;
-  max-width: 90vw;
+  max-width: 520px;
+  width: min(520px, 90vw);
   text-align: center;
   box-shadow: 0 10px 40px rgba(0,0,0,0.3);
   max-height: 90vh;
@@ -556,6 +587,14 @@ button {
     align-items: flex-start;
     gap: 12px;
   }
+  .user-stats {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .user-stats button {
+    width: 100%;
+  }
   .tabs { flex-wrap: wrap; }
   .tab-button { flex: 1 1 120px; }
 
@@ -572,7 +611,8 @@ button {
   }
 
   .modal-card {
-    max-width: 90vw;
+    max-width: 95vw;
+    width: 95vw;
     max-height: 90vh;
     padding: 14px;
   }

@@ -271,7 +271,7 @@ function renderAllBadges() {
   state.badges.forEach(badge => {
     const unlocked = state.userBadges.has(badge.id);
     const levelLabelRaw = state.userBadgeLevels.get(badge.id);
-    const levelLabel = normalizeLevelLabel(levelLabelRaw);
+    const levelLabel = normalizeLevelLabel(levelLabelRaw, badge);
     const config = parseConfig(badge.answer);
     const card = document.createElement('article');
     card.className = 'card-badge clickable compact';
@@ -281,6 +281,8 @@ function renderAllBadges() {
     const statusClass = unlocked ? (isMysteryLevel(levelLabel) ? 'mystery' : 'success') : 'locked';
     const emoji = getBadgeEmoji(badge);
     const title = stripEmojis(badge.name || '');
+    const levelCount = getLevelCount(config);
+    const levelsText = levelCount ? `${levelCount} niveaux à obtenir` : '';
     let formContent = `
       <input type="text" name="answer" placeholder="Ta réponse" required>
       <button type="submit" class="primary">Valider</button>
@@ -308,6 +310,7 @@ function renderAllBadges() {
         <div class="badge-emoji">${emoji}</div>
         <div class="badge-title">${title}</div>
       </div>
+      ${levelCount ? `<p class="muted">${levelsText}</p>` : ''}
       <div class="all-badge-details hidden">
         <p class="muted">${badge.question}</p>
         <form data-badge-id="${badge.id}">
@@ -334,10 +337,11 @@ function renderMyBadges() {
     els.myBadgesList.innerHTML = '<p class="muted">Aucun badge débloqué pour l’instant.</p>';
     return;
   }
+  els.myBadgesList.classList.add('list-mode');
   els.myBadgesList.innerHTML = '';
   unlockedBadges.forEach(badge => {
     const levelLabel = state.userBadgeLevels.get(badge.id);
-    const normLevel = normalizeLevelLabel(levelLabel);
+    const normLevel = normalizeLevelLabel(levelLabel, badge);
     const card = document.createElement('article');
     card.className = 'card-badge clickable compact';
     const userAnswer = state.userBadgeAnswers.get(badge.id);
@@ -481,9 +485,17 @@ function isMysteryLevel(label) {
   return lower.includes('mystère') || lower.includes('mystere') || lower.includes('secret');
 }
 
-function normalizeLevelLabel(label) {
+function normalizeLevelLabel(label, badge = null) {
+  const isLecteurBadge = badge && typeof badge.name === 'string' && badge.name.toLowerCase().includes('lecteur');
+  if (isLecteurBadge && isMysteryLevel(label)) return 'Niv max';
   if (isMysteryLevel(label)) return 'Niv mystère';
   return label;
+}
+
+function getLevelCount(config) {
+  if (!config) return 0;
+  if (Array.isArray(config.levels)) return config.levels.length;
+  return 0;
 }
 
 function parseConfig(answer) {
@@ -497,6 +509,7 @@ function parseConfig(answer) {
 function evaluateBadgeAnswer(badge, rawAnswer, selectedOptions = []) {
   const lower = rawAnswer.trim().toLowerCase();
   const config = parseConfig(badge.answer);
+  const isLecteurBadge = badge && typeof badge.name === 'string' && badge.name.toLowerCase().includes('lecteur');
 
   if (config && config.type === 'multiSelect') {
     const count = Array.isArray(selectedOptions) ? selectedOptions.length : 0;
@@ -506,7 +519,12 @@ function evaluateBadgeAnswer(badge, rawAnswer, selectedOptions = []) {
     const levels = Array.isArray(config.levels) ? [...config.levels] : [];
     levels.sort((a, b) => (b.min ?? 0) - (a.min ?? 0));
     const level = levels.find(l => count >= (l.min ?? 0));
-    return { ok: true, level: level?.label ?? null, message: 'Bravo, badge débloqué !' };
+    const maxLevel = levels.length ? levels[0] : null;
+    const levelLabel = level?.label ?? null;
+    const isMax = maxLevel && levelLabel === maxLevel.label;
+    const finalLabel = (isLecteurBadge && isMax) ? 'Niv max'
+      : (isMax && !isMysteryLevel(levelLabel) ? 'Niv max' : levelLabel);
+    return { ok: true, level: finalLabel, message: 'Bravo, badge débloqué !' };
   }
 
   if (config && config.type === 'range' && Array.isArray(config.levels)) {
@@ -518,7 +536,11 @@ function evaluateBadgeAnswer(badge, rawAnswer, selectedOptions = []) {
     if (!level) {
       return { ok: false, message: 'Valeur hors des niveaux.' };
     }
-    return { ok: true, level: level.label, message: `Bravo, niveau obtenu : ${level.label}` };
+    const maxLevel = config.levels[config.levels.length - 1];
+    const isMax = level === maxLevel;
+    const finalLabel = (isLecteurBadge && isMax) ? 'Niv max'
+      : ((isMax && !isMysteryLevel(level.label)) ? 'Niv max' : level.label);
+    return { ok: true, level: finalLabel, message: `Bravo, niveau obtenu : ${finalLabel}` };
   }
 
   if (config && config.type === 'boolean') {
@@ -730,7 +752,7 @@ function showCommunityProfile(data) {
   els.communityProfileAvatar.src = data.avatar || './icons/badgelife-logo.svg';
   els.communityProfileUsername.textContent = data.username || 'Utilisateur';
   els.communityProfileBadges.textContent = `${data.badges || 0} badge(s)`;
-  els.communityProfileMystery.textContent = `${data.mystery || 0} niv. secret`;
+  els.communityProfileMystery.textContent = `${data.mystery || 0} niv. mystère`;
   renderCommunityBadgeGrid([]);
   els.communityProfileModal.classList.remove('hidden');
   if (data.userId) {
@@ -767,7 +789,7 @@ async function fetchCommunityUserStats(userId) {
     const badgeCount = unlocked.length;
     const mystery = unlocked.filter(r => isMysteryLevel(r.level)).length;
     els.communityProfileBadges.textContent = `${badgeCount} badge(s)`;
-    els.communityProfileMystery.textContent = `${mystery} niv. secret`;
+    els.communityProfileMystery.textContent = `${mystery} niv. mystère`;
     renderCommunityBadgeGrid(unlocked);
   } catch (_) {
     renderCommunityBadgeGridMessage('Badges non visibles');
@@ -836,8 +858,9 @@ function setMessage(text, isError = false) {
 
 async function updateCounters(syncProfile = false) {
   const badgeCount = state.userBadges.size;
+  const totalBadges = state.badges?.length ?? 0;
   state.mysteryCount = Array.from(state.userBadgeLevels.values()).filter(isMysteryLevel).length;
-  if (els.badgeCount) els.badgeCount.textContent = badgeCount;
+  if (els.badgeCount) els.badgeCount.textContent = `${badgeCount}/${totalBadges}`;
   if (els.mysteryCount) els.mysteryCount.textContent = state.mysteryCount;
   if (state.profile) {
     state.profile.badge_count = badgeCount;
