@@ -218,12 +218,24 @@ async function fetchProfile() {
 }
 
 async function fetchBadges() {
-  const { data, error } = await supabase.from('badges').select('id,name,description,question,answer');
+  // On récupère aussi la colonne emoji pour afficher le visuel stocké en base.
+  // Si la colonne n’existe pas (schéma plus ancien), on retombe sur l’ancien select.
+  const selectWithEmoji = 'id,name,description,question,answer,emoji';
+  const selectFallback = 'id,name,description,question,answer';
+
+  let { data, error } = await supabase.from('badges').select(selectWithEmoji);
+
   if (error) {
-    console.error(error);
-    setMessage('Impossible de charger les badges.', true);
-    return;
+    console.warn('Colonne emoji absente ? On retente sans emoji.', error);
+    const retry = await supabase.from('badges').select(selectFallback);
+    if (retry.error) {
+      console.error(retry.error);
+      setMessage('Impossible de charger les badges.', true);
+      return;
+    }
+    data = retry.data;
   }
+
   state.badges = data ?? [];
 }
 
@@ -343,7 +355,8 @@ function renderMyBadges() {
     const levelLabel = state.userBadgeLevels.get(badge.id);
     const normLevel = normalizeLevelLabel(levelLabel, badge);
     const card = document.createElement('article');
-    card.className = 'card-badge clickable compact';
+    // Classe supplémentaire pour cibler le style "Mes badges" sans toucher les autres listes
+    card.className = 'card-badge clickable compact my-badge-card';
     const userAnswer = state.userBadgeAnswers.get(badge.id);
     const formattedAnswer = userAnswer ? formatUserAnswer(badge, userAnswer) : null;
     const cleanName = stripEmojis(badge.name || '');
@@ -360,7 +373,7 @@ function renderMyBadges() {
         <div class="badge-emoji">${getBadgeEmoji(badge)}</div>
         <div class="badge-title">${cleanName}</div>
       </div>
-      <div class="badge-details hidden">
+      <div class="badge-details">
         ${formattedAnswer ? `<p class="muted">${formattedAnswer}</p>` : ''}
       </div>
     `;
@@ -369,8 +382,8 @@ function renderMyBadges() {
     card.addEventListener('click', (e) => {
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'button' || e.target.closest('form')) return;
-      details.classList.toggle('hidden');
-      card.classList.toggle('expanded');
+      // On ne change pas la forme du badge : on affiche seulement la réponse.
+      card.classList.toggle('show-details');
     });
     els.myBadgesList.appendChild(card);
   });
@@ -593,8 +606,22 @@ function formatUserAnswer(badge, answer) {
     }
   }
 
+  // Cas particulier : badge Pilote → préfixe lisible "permis de ..."
+  if (badge?.name && badge.name.toLowerCase().includes('pilote')) {
+    return `permis de ${answer}`;
+  }
+
+  // Cas particulier : badge Bodycounter (orthographe tolérante) → suffixe explicite
+  if (badge?.name) {
+    const lowerName = badge.name.toLowerCase();
+    if (lowerName.includes('bodycounter') || lowerName.includes('bodycoutner')) {
+      return `${answer} partenaires sexuelle`;
+    }
+  }
+
   if (config?.type === 'multiSelect') {
-    return `Réponse : ${answer}`;
+    // On affiche directement la sélection sans préfixe "Réponse :"
+    return `${answer}`;
   }
   if (typeof template === 'string' && template.includes('{{answer}}')) {
     return template.replace('{{answer}}', answer);
@@ -603,10 +630,10 @@ function formatUserAnswer(badge, answer) {
     return `${answer} ${suffix}`;
   }
   if (questionSuffix) {
-    return `Réponse : ${answer} ${questionSuffix}`;
+    return `${answer} ${questionSuffix}`;
   }
   // Fallback lisible si rien n'est configuré
-  return `Réponse : ${answer}`;
+  return `${answer}`;
 }
 
 function getBadgeEmoji(badge) {

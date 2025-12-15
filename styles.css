@@ -277,6 +277,32 @@ button {
   padding-top: 0;
 }
 
+/* Mes badges : éviter que le layout se déforme quand on affiche la réponse */
+.my-badge-card {
+  position: relative;
+  padding-bottom: 42px; /* réserve de place pour la réponse */
+}
+
+.my-badge-card .badge-details {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  margin: 0;
+  padding-top: 10px; /* un peu plus d'espace au-dessus de la réponse */
+  border-top: none;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.my-badge-card.show-details .badge-details {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .card-badge {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
