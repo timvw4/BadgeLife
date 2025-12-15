@@ -656,7 +656,7 @@ function inferSuffixFromQuestion(question) {
   const q = question.toLowerCase();
   if (q.includes('pays')) return 'pays visités';
   if (q.includes('livre')) return 'livres lus';
-  if (q.includes('kilomètre') || q.includes('km')) return 'km';
+  if (q.includes('kilomètre') || q.includes('km')) return 'km parcouru';
   if (q.includes('heures') || q.includes('heure')) return 'heures';
   if (q.includes('service militaire') || q.includes('militaire')) return 'service militaire';
   return null;
@@ -703,9 +703,10 @@ async function handleProfileUpdate(e) {
 
   // Upload avatar si fourni
   if (avatarFile) {
-    // Optionnel : mini validation de taille (~1 Mo conseillé)
-    if (avatarFile.size > 2 * 1024 * 1024) {
-      return setProfileMessage('Image trop lourde (max ~2 Mo).', true);
+    // Optionnel : validation de taille (plafond porté à ~5 Mo)
+    const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+    if (avatarFile.size > MAX_AVATAR_BYTES) {
+      return setProfileMessage('Image trop lourde (max ~5 Mo).', true);
     }
 
     const path = `${state.user.id}/${Date.now()}-${avatarFile.name}`;
@@ -752,6 +753,10 @@ async function handleProfileUpdate(e) {
   els.profileAvatar.value = '';
   els.profilePassword.value = '';
   setProfileMessage('Profil mis à jour.', false);
+  // Ferme le panneau profil après enregistrement réussi
+  if (els.profilePanel) {
+    els.profilePanel.classList.add('hidden');
+  }
   await fetchCommunity(); // rafraîchit l’onglet communauté pour afficher l’avatar
 }
 

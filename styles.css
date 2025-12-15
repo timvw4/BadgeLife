@@ -455,7 +455,8 @@ button {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -464,16 +465,16 @@ button {
 }
 
 .modal-card {
-  background: rgba(17, 24, 39, 0.9);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  min-width: 240px;
-  max-width: 520px;
-  width: min(520px, 90vw);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(17, 24, 39, 0.92));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 18px;
+  padding: 26px;
+  min-width: 320px;
+  max-width: 1200px;
+  width: min(1200px, 95vw); /* occupe presque toute la largeur */
   text-align: center;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-  max-height: 90vh;
+  box-shadow: 0 16px 60px rgba(0,0,0,0.45);
+  max-height: 94vh;         /* occupe presque toute la hauteur */
   overflow-y: auto;
 }
 
@@ -483,22 +484,29 @@ button {
 
 .profile-modal-content {
   display: grid;
-  gap: 8px;
+  gap: 14px;
   justify-items: center;
-  margin-top: 12px;
+  margin-top: 6px;
+  padding: 6px;
 }
 
 .modal-badges-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+  gap: 12px;
   width: 100%;
+  margin-top: 6px;
 }
 
 .modal-badge-emoji {
-  font-size: 28px;
+  font-size: 32px;
   line-height: 1;
   text-align: center;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.25);
 }
 
 .card-badge .row {
@@ -645,6 +653,18 @@ button {
 
   .profile-modal-content {
     gap: 6px;
+  }
+
+  /* Mes badges : affichage cohérent sur mobile */
+  .my-badge-card {
+    padding-bottom: 52px; /* plus de place si la réponse fait 2 lignes */
+  }
+
+  .my-badge-card .badge-details {
+    left: 12px;
+    right: 12px;
+    font-size: 15px;
+    line-height: 1.4;
   }
 }
 
